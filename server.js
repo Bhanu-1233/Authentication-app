@@ -13,25 +13,23 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json());
-
-// CORS Configuration - UPDATED for Production
+// CORS Configuration - Production
 const allowedOrigins = [
   'http://localhost:3000', 
   'http://localhost:3001', 
   'http://127.0.0.1:3000',
-  'https://your-actual-netlify-app.netlify.app', // Replace with your real Netlify URL
-  'https://your-custom-domain.com' // If you have a custom domain
+  'https://fullstack-login-logout-flow.netlify.app' // Your Netlify frontend URL
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-    
+
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin); // Add this for debugging
+      console.log('CORS blocked origin:', origin); // Debugging
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -40,18 +38,19 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Also update session config for production
+// Session configuration for production
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'someSuperSecretValue',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true, // HTTPS required
+    secure: true,           // HTTPS required
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'none' // Required for cross-site cookies
+    sameSite: 'none'        // Required for cross-site cookies
   }
 }));
+
 // Initialize SQLite database
 const dbPath = process.env.DATABASE_PATH || './auth.db';
 const db = new sqlite3.Database(dbPath, (err) => {
