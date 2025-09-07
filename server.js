@@ -14,33 +14,51 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 app.use(express.json());
 
-// CORS Configuration - FIXED to allow frontend connection
+// CORS Configuration - UPDATED for Production
+const allowedOrigins = [
+  'http://localhost:3000', 
+  'http://localhost:3001', 
+  'http://127.0.0.1:3000',
+  'https://your-actual-netlify-app.netlify.app', // Replace with your real Netlify URL
+  'https://your-custom-domain.com' // If you have a custom domain
+];
+
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000'], // Allow multiple frontend URLs
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin); // Add this for debugging
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Session configuration
+// Also update session config for production
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
+    secure: true, // HTTPS required
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax'
+    sameSite: 'none' // Required for cross-site cookies
   }
 }));
-
 // Initialize SQLite database
-const db = new sqlite3.Database('./auth.db', (err) => {
+const dbPath = process.env.DATABASE_PATH || './auth.db';
+const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening database:', err);
   } else {
-    console.log('Connected to SQLite database');
+    console.log('Connected to SQLite database at:', dbPath);
     // Create users table if it doesn't exist
     db.run(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -63,9 +81,22 @@ const isValidEmail = (email) => {
   return emailRegex.test(email);
 };
 
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
 // Test endpoint to check if server is running
 app.get('/api/test', (req, res) => {
-  res.json({ message: 'Backend server is running!', timestamp: new Date().toISOString() });
+  res.json({ 
+    message: 'Backend server is running!', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
 // Register endpoint
@@ -268,7 +299,9 @@ app.use((req, res) => {
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 API endpoints:`);
+  console.log(`   GET  /api/health - Health check`);
   console.log(`   GET  /api/test - Server status`);
   console.log(`   POST /api/register - User registration`);
   console.log(`   POST /api/login - User login`);
