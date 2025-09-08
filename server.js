@@ -37,19 +37,21 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-
-// Session configuration for production
+// Update your backend session configuration
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'someSuperSecretValue',
+  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,           // HTTPS required
+    secure: process.env.NODE_ENV === 'production', // true for HTTPS in production
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'none'        // Required for cross-site cookies
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // 'none' for cross-origin
   }
 }));
+
+// Also add this middleware to handle preflight requests
+app.options('*', cors()); // Enable preflight for all routes
 
 // Initialize SQLite database
 const dbPath = process.env.DATABASE_PATH || './auth.db';
