@@ -13,45 +13,59 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(express.json());
-// CORS Configuration - Production
+
+// CORS Configuration - UPDATED for Production
 const allowedOrigins = [
   'http://localhost:3000', 
   'http://localhost:3001', 
   'http://127.0.0.1:3000',
-  'https://fullstack-login-logout-flow.netlify.app' // Your Netlify frontend URL
+  'https://react-auth-app-bhanu.netlify.app', // Update with your actual Netlify URL
+  'https://your-custom-domain.com' // Add your custom domain if you have one
 ];
 
-app.use(cors({
+const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
-
+    
     if (allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin); // Debugging
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-}));
-// Update your backend session configuration
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests - FIXED: Remove the problematic * route
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin);
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    return res.sendStatus(200);
+  }
+  next();
+});
+
+// Session configuration - UPDATED for Production
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // true for HTTPS in production
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // 'none' for cross-origin
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Required for cross-site cookies
   }
 }));
-
-// Also add this middleware to handle preflight requests
-app.options('*', cors()); // Enable preflight for all routes
 
 // Initialize SQLite database
 const dbPath = process.env.DATABASE_PATH || './auth.db';
@@ -291,7 +305,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
-// 404 handler - FIXED: Use proper Express syntax
+// 404 handler - FIXED: Remove problematic wildcard route
 app.use((req, res) => {
   console.log('404 - Route not found:', req.originalUrl);
   res.status(404).json({ error: 'Route not found' });
