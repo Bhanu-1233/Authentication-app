@@ -16,56 +16,40 @@ app.use(express.json());
 
 // CORS Configuration - UPDATED for Production
 const allowedOrigins = [
-  'http://localhost:3000', 
-  'http://localhost:3001', 
+  'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'https://react-auth-app-bhanu.netlify.app', // Update with your actual Netlify URL
-  'https://your-custom-domain.com' // Add your custom domain if you have one
+  'http://localhost:3001',
+  'https://fullstack-login-logout-flow.netlify.app'
 ];
 
-const corsOptions = {
+app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
+    if (!origin) return callback(null, true); // allow mobile apps or curl
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.log("❌ CORS blocked origin:", origin);
+      return callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
-};
-
-app.use(cors(corsOptions));
-
-// Handle preflight requests - FIXED: Remove the problematic * route
-app.use((req, res, next) => {
-  if (req.method === 'OPTIONS') {
-    res.header('Access-Control-Allow-Origin', req.headers.origin);
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    return res.sendStatus(200);
-  }
-  next();
-});
+}));
 
 // Session configuration - UPDATED for Production
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+    secure: process.env.NODE_ENV === 'production', // HTTPS only in prod
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Required for cross-site cookies
+    sameSite: 'none', // REQUIRED for cross-site
+    maxAge: 24 * 60 * 60 * 1000
   }
 }));
+
 
 // Initialize SQLite database
 const dbPath = process.env.DATABASE_PATH || './auth.db';
